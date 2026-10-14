@@ -1,122 +1,95 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
 
-function App() {
-  const [count, setCount] = useState(0)
+import { Link, Routes, Route } from "react-router-dom";
 
+function Home() {
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+    <main className="hero">
+      <p className="eyebrow">YOUR THOUGHTS. YOUR PASSIONS.</p>
+      <h1>Your mind deserves its own space.</h1>
+      <p>
+        Keep private journals, share your passions,
+        and use AI to help express your ideas.
+      </p>
+      <div className="actions">
+        <Link className="primary" to="/register">
+          Get started
+        </Link>
+        <Link className="secondary" to="/blogs">
+          Explore blogs
+        </Link>
+      </div>
+    </main>
+  );
 }
 
-export default App
+function Dashboard() {
+  return (
+    <main className="page">
+      <h1>Welcome to MindSpace</h1>
+      <p>Your personal space for thoughts and creativity.</p>
+      <div className="cards">
+        <Link to="/journal">My private journal</Link>
+        <Link to="/blogs">Explore blogs</Link>
+        <Link to="/write">Write a blog</Link>
+      </div>
+    </main>
+  );
+}
+
+function Placeholder({ title }) {
+  return (
+    <main className="page">
+      <h1>{title}</h1>
+      <p>This page is under development.</p>
+      <Link to="/">Back to home</Link>
+    </main>
+  );
+}
+
+export default function App() {
+  return (
+    <>
+      <nav className="navbar">
+        <Link className="brand" to="/">MindSpace ✦</Link>
+        <div className="nav-links">
+          <Link to="/blogs">Explore</Link>
+          <Link to="/login">Login</Link>
+          <Link to="/register">Sign up</Link>
+        </div>
+      </nav>
+
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route
+          path="/login"
+          element={<Placeholder title="Login" />}
+        />
+        <Route
+          path="/register"
+          element={<Placeholder title="Create your account" />}
+        />
+        <Route
+          path="/journal"
+          element={<Placeholder title="My private journal" />}
+        />
+        <Route
+          path="/blogs"
+          element={<Placeholder title="Explore blogs" />}
+        />
+        <Route
+          path="/write"
+          element={<Placeholder title="Write a blog" />}
+        />
+        <Route
+          path="/profile"
+          element={<Placeholder title="My profile" />}
+        />
+        <Route
+          path="/ai"
+          element={<Placeholder title="MindSpace AI" />}
+        />
+      </Routes>
+    </>
+  );
+}
