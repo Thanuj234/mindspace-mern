@@ -1,419 +1,76 @@
-
-import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { BookOpen, CalendarDays, Clock3, List, Plus, Search, PenLine, Heart, Image as ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import api from "../services/api";
+import "./journal-upgrade.css";
 
-const emptyForm = {
-  title: "",
-  content: "",
-  mood: "neutral",
-  tags: "",
+const getDate = (j) => {
+  const d = new Date(j.updatedAt || j.createdAt || 0);
+  return Number.isNaN(d.getTime()) ? new Date(0) : d;
 };
-
-const moods = [
-  { value: "neutral", label: "😐 Neutral" },
-  { value: "happy", label: "😊 Happy" },
-  { value: "grateful", label: "🙏 Grateful" },
-  { value: "sad", label: "😔 Sad" },
-  { value: "anxious", label: "😟 Anxious" },
-  { value: "excited", label: "✨ Excited" },
-  { value: "calm", label: "🌿 Calm" },
-];
-
-function getErrorMessage(error) {
-  if (error.response?.status === 401) {
-    return "Your session may have expired. Please log in again.";
-  }
-
-  return (
-    error.response?.data?.message ||
-    "Something went wrong. Please try again."
-  );
-}
+const plain = (value = "") => String(value).replace(/<[^>]*>/g, " ").replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/\s+/g, " ").trim();
 
 export default function Journal() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [journals, setJournals] = useState([]);
-  const [selectedId, setSelectedId] = useState(null);
-  const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
   const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("all");
+  const [sort, setSort] = useState("newest");
+  const [view, setView] = useState("list");
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [month, setMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
 
-  const selectedJournal =
-    journals.find((journal) => journal._id === selectedId) || null;
+  async function load() {
+    setLoading(true); setError("");
+    try { const response = await api.get("/journals"); setJournals(Array.isArray(response.data) ? response.data : []); }
+    catch (err) { setError(err.response?.data?.message || "Couldn't load your journals. Please try again."); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
 
-  const loadJournals = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  const categories = useMemo(() => [...new Set(journals.flatMap((j) => Array.isArray(j.tags) ? j.tags : []).filter(Boolean))].sort(), [journals]);
+  const filtered = useMemo(() => journals.filter((j) => {
+    const tags = Array.isArray(j.tags) ? j.tags : [];
+    const q = search.trim().toLowerCase();
+    return (!q || String(j.title || "").toLowerCase().includes(q) || plain(j.content).toLowerCase().includes(q) || tags.some((t) => String(t).toLowerCase().includes(q))) &&
+      (category === "all" || tags.includes(category)) && (!favoritesOnly || Boolean(j.isFavorite));
+  }).sort((a, b) => (sort === "oldest" ? 1 : -1) * (getDate(a) - getDate(b))), [journals, search, category, sort, favoritesOnly]);
 
-    try {
-      const response = await api.get("/journals");
-      const data = Array.isArray(response.data) ? response.data : [];
+  const firstDay = new Date(month.getFullYear(), month.getMonth(), 1).getDay();
+  const dayCount = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+  const cells = [...Array(firstDay).fill(null), ...Array.from({ length: dayCount }, (_, i) => i + 1)];
+  const monthTitle = month.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  const open = (j) => navigate(`/journal/${j._id}/edit`);
 
-      setJournals(data);
-      setSelectedId((currentId) => {
-        if (currentId && data.some((item) => item._id === currentId)) {
-          return currentId;
-        }
-
-        return data[0]?._id || null;
-      });
-    } catch (err) {
-      setError(getErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadJournals();
-  }, [loadJournals]);
-
-  useEffect(() => {
-    if (!selectedJournal) {
-      setForm(emptyForm);
-      return;
-    }
-
-    setForm({
-      title: selectedJournal.title || "",
-      content: selectedJournal.content || "",
-      mood: selectedJournal.mood || "neutral",
-      tags: Array.isArray(selectedJournal.tags)
-        ? selectedJournal.tags.join(", ")
-        : "",
-    });
-
-    setNotice("");
-  }, [selectedId, selectedJournal?._id]);
-
-  function startNewEntry() {
-    setSelectedId(null);
-    setForm(emptyForm);
-    setError("");
-    setNotice("");
+  function card(j, compact = false) {
+    const d = getDate(j); const content = plain(j.content);
+    return <article className={`journal-library-card ${compact ? "journal-library-card-compact" : ""}`} key={j._id}>
+      {j.images?.length > 0 && <div className="journal-card-image-strip"><ImageIcon size={14} /> {j.images.length} {j.images.length === 1 ? "photo" : "photos"} attached</div>}
+      <div className="journal-card-top"><span className={`journal-card-mood mood-${String(j.mood || "neutral").toLowerCase()}`}>{j.mood || "neutral"}</span><div className="journal-card-top-right">{j.isFavorite && <Heart size={15} fill="currentColor" aria-label="Favourite" />}<time>{d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</time></div></div>
+      <button className="journal-card-title-button" type="button" onClick={() => open(j)}><h2>{j.title || "Untitled entry"}</h2></button>
+      {!compact && <p>{content.slice(0, 180) || "No text preview available."}{content.length > 180 ? "…" : ""}</p>}
+      {!!j.tags?.length && <div className="journal-card-tags">{j.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>}
+      <button type="button" className="journal-card-open" onClick={() => open(j)}><PenLine size={14} /> Open entry</button>
+    </article>;
   }
 
-  function updateField(event) {
-    const { name, value } = event.target;
-    setForm((current) => ({ ...current, [name]: value }));
-    setNotice("");
-  }
+  const grouped = Object.values(filtered.reduce((acc, j) => { const d = getDate(j); const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; if (!acc[key]) acc[key] = { date: d, items: [] }; acc[key].items.push(j); return acc; }, {})).sort((a, b) => b.date - a.date);
 
-  async function handleSave(event) {
-    event.preventDefault();
-    setError("");
-    setNotice("");
-
-    const title = form.title.trim();
-    const content = form.content.trim();
-
-    if (!title || !content) {
-      setError("Please enter both a title and your journal entry.");
-      return;
-    }
-
-    const payload = {
-      title,
-      content,
-      mood: form.mood,
-      tags: [
-        ...new Set(
-          form.tags
-            .split(",")
-            .map((tag) => tag.trim())
-            .filter(Boolean)
-        ),
-      ],
-    };
-
-    setSaving(true);
-
-    try {
-      if (selectedId) {
-        const response = await api.put(
-          `/journals/${selectedId}`,
-          payload
-        );
-
-        const updated = response.data;
-
-        setJournals((current) =>
-          current.map((item) =>
-            item._id === selectedId ? updated : item
-          )
-        );
-        setNotice("Your journal entry has been updated.");
-      } else {
-        const response = await api.post("/journals", payload);
-        const created = response.data;
-
-        setJournals((current) => [created, ...current]);
-        setSelectedId(created._id);
-        setNotice("Your journal entry has been saved.");
-      }
-    } catch (err) {
-      setError(getErrorMessage(err));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleDelete() {
-    if (!selectedId || !selectedJournal) return;
-
-    const confirmed = window.confirm(
-      `Delete "${selectedJournal.title}" permanently?`
-    );
-
-    if (!confirmed) return;
-
-    setError("");
-    setNotice("");
-
-    try {
-      await api.delete(`/journals/${selectedId}`);
-
-      const remaining = journals.filter(
-        (item) => item._id !== selectedId
-      );
-
-      setJournals(remaining);
-      setSelectedId(remaining[0]?._id || null);
-      setNotice("Journal entry deleted.");
-    } catch (err) {
-      setError(getErrorMessage(err));
-    }
-  }
-
-  const filteredJournals = journals.filter((journal) => {
-    const query = search.toLowerCase();
-
-    return (
-      journal.title?.toLowerCase().includes(query) ||
-      journal.content?.toLowerCase().includes(query) ||
-      journal.tags?.some((tag) => tag.toLowerCase().includes(query))
-    );
-  });
-
-  return (
-    <div className="workspace">
-      <aside className="sidebar">
-        <Link className="brand sidebar-brand" to="/">
-          <span className="brand-mark" aria-hidden="true">●</span>
-          MindSpace
-        </Link>
-
-        <button
-          type="button"
-          className="dark-button new-entry-button"
-          onClick={startNewEntry}
-        >
-          + New journal entry
-        </button>
-
-        <nav className="sidebar-nav" aria-label="Workspace navigation">
-          <Link to="/dashboard">▦ &nbsp; Dashboard</Link>
-          <Link className="active" to="/journal">▤ &nbsp; My Journals</Link>
-          <Link to="/blogs">◎ &nbsp; Explore Blogs</Link>
-          <Link to="/write">✎ &nbsp; Write a Blog</Link>
-          <Link to="/ai">✧ &nbsp; AI Companion</Link>
-          <Link to="/profile">♙ &nbsp; Profile</Link>
-        </nav>
-
-        <p className="sidebar-note">
-          Your journals are private. Nothing is published without your choice.
-        </p>
-      </aside>
-
-      <main className="workspace-main">
-        <header className="workspace-topbar">
-          <input
-            className="journal-search"
-            type="search"
-            placeholder="Search your journals"
-            aria-label="Search journals"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-
-          <div className="workspace-top-actions">
-            <button
-              type="button"
-              className="dark-button"
-              onClick={startNewEntry}
-            >
-              + New entry
-            </button>
-            <Link className="light-button" to="/write">
-              ✎ Write a blog
-            </Link>
-          </div>
-        </header>
-
-        <section className="journal-content">
-          <div className="journal-heading">
-            <div>
-              <p className="section-label">YOUR PRIVATE SPACE</p>
-              <h1>My Journals</h1>
-              <p className="muted">
-                A quiet place to collect your thoughts, one page at a time.
-              </p>
-            </div>
-            <span className="entry-count">
-              {journals.length} {journals.length === 1 ? "entry" : "entries"}
-            </span>
-          </div>
-
-          {error && <p className="form-error" role="alert">{error}</p>}
-          {notice && <p className="form-success" role="status">{notice}</p>}
-
-          {loading ? (
-            <p className="muted">Loading your journal entries...</p>
-          ) : (
-            <div className="journal-layout">
-              <aside className="journal-list">
-                <h2>Your entries</h2>
-
-                {filteredJournals.length === 0 ? (
-                  <p className="muted">
-                    {search
-                      ? "No entries match your search."
-                      : "Your first page is waiting. Start writing whenever you're ready."}
-                  </p>
-                ) : (
-                  filteredJournals.map((journal) => (
-                    <button
-                      type="button"
-                      key={journal._id}
-                      className={`journal-list-item ${
-                        selectedId === journal._id ? "selected" : ""
-                      }`}
-                      onClick={() => {
-                        setSelectedId(journal._id);
-                        setError("");
-                        setNotice("");
-                      }}
-                    >
-                      <strong>{journal.title}</strong>
-                      <span>
-                        {journal.updatedAt
-                          ? new Date(journal.updatedAt).toLocaleDateString()
-                          : "Recently created"}
-                      </span>
-                      <small>
-                        {(journal.content || "").slice(0, 85)}
-                        {journal.content?.length > 85 ? "…" : ""}
-                      </small>
-                    </button>
-                  ))
-                )}
-              </aside>
-
-              <section className="journal-editor">
-                <div className="editor-heading">
-                  <div>
-                    <p className="section-label">
-                      {selectedId ? "YOUR JOURNAL ENTRY" : "NEW PRIVATE ENTRY"}
-                    </p>
-                    <h2>
-                      {selectedId ? "Your thoughts, preserved." : "A fresh page"}
-                    </h2>
-                    <p className="muted">
-                      Only you can read this entry through your account.
-                    </p>
-                  </div>
-
-                  {selectedId && (
-                    <button
-                      type="button"
-                      className="light-button delete-button"
-                      onClick={handleDelete}
-                    >
-                      Delete
-                    </button>
-                  )}
-                </div>
-
-                <form className="journal-form" onSubmit={handleSave}>
-                  <label htmlFor="journal-title">Title</label>
-                  <input
-                    id="journal-title"
-                    name="title"
-                    value={form.title}
-                    onChange={updateField}
-                    maxLength={150}
-                    placeholder="Give this entry a name"
-                    required
-                  />
-
-                  <label htmlFor="journal-content">Your entry</label>
-                  <textarea
-                    id="journal-content"
-                    name="content"
-                    value={form.content}
-                    onChange={updateField}
-                    maxLength={20000}
-                    rows={12}
-                    placeholder="What happened, what you noticed, what you would tell a friend..."
-                    required
-                  />
-
-                  <div className="editor-meta">
-                    <div>
-                      <label htmlFor="journal-mood">Mood</label>
-                      <select
-                        id="journal-mood"
-                        name="mood"
-                        value={form.mood}
-                        onChange={updateField}
-                      >
-                        {moods.map((mood) => (
-                          <option key={mood.value} value={mood.value}>
-                            {mood.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label htmlFor="journal-tags">Tags</label>
-                      <input
-                        id="journal-tags"
-                        name="tags"
-                        value={form.tags}
-                        onChange={updateField}
-                        placeholder="travel, learning, gratitude"
-                      />
-                      <small>Separate tags with commas.</small>
-                    </div>
-                  </div>
-
-                  <div className="editor-footer">
-                    <span className="muted">
-                      {form.content.length}/20000 characters
-                    </span>
-
-                    <button
-                      type="submit"
-                      className="dark-button"
-                      disabled={saving}
-                    >
-                      {saving
-                        ? "Saving..."
-                        : selectedId
-                          ? "Save changes"
-                          : "Save entry"}
-                    </button>
-                  </div>
-                </form>
-              </section>
-            </div>
-          )}
-        </section>
-      </main>
+  return <section className="journal-content journal-library-page">
+    <div className="journal-heading library-heading"><div><p className="section-label">PRIVATE BY DEFAULT</p><h1>My Journals</h1><p className="muted">Everything here is visible only to you. Search it, filter it, or revisit a day at a time.</p></div><Link className="dark-button" to="/journal/new"><Plus size={17} /> New entry</Link></div>
+    {location.state?.notice && <p className="form-success journal-page-notice" role="status">{location.state.notice}</p>}
+    <div className="journal-library-controls">
+      <label className="library-search"><Search size={18} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search titles, words, or tags…" aria-label="Search journal entries" /></label>
+      <div className="library-view-switch" aria-label="Journal view"><button type="button" className={view === "list" ? "active" : ""} onClick={() => setView("list")}><List size={15} /> List</button><button type="button" className={view === "calendar" ? "active" : ""} onClick={() => setView("calendar")}><CalendarDays size={15} /> Calendar</button><button type="button" className={view === "timeline" ? "active" : ""} onClick={() => setView("timeline")}><Clock3 size={15} /> Timeline</button></div>
+      <div className="library-filters"><select value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Filter by tag"><option value="all">All categories</option>{categories.map((tag) => <option key={tag} value={tag}>{tag}</option>)}</select><select value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort entries"><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select><button type="button" className={`journal-favorites-filter ${favoritesOnly ? "active" : ""}`} onClick={() => setFavoritesOnly((v) => !v)} aria-pressed={favoritesOnly}><Heart size={15} fill={favoritesOnly ? "currentColor" : "none"} /> Favorites</button><span className="library-count">{filtered.length} of {journals.length} entries</span></div>
     </div>
-  );
+    {error && <div className="journal-error-panel" role="alert"><p>{error}</p><button type="button" className="light-button" onClick={load}>Try again</button></div>}
+    {loading ? <div className="journal-empty-card"><p className="muted">Loading your journal entries…</p></div> : !filtered.length ? <div className="journal-empty-card"><div className="journal-empty-icon"><BookOpen size={24} /></div><h2>{journals.length ? "No entries found" : "Your journal is empty for now"}</h2><p>{journals.length ? "Try another search or filter, or create a fresh entry." : "Write about today — where you went, what you learned, how it felt. It stays private."}</p><Link className="dark-button" to="/journal/new"><Plus size={17} /> Write an entry</Link></div>
+      : view === "calendar" ? <div className="journal-calendar"><div className="journal-calendar-heading"><button type="button" className="journal-calendar-nav" aria-label="Previous month" onClick={() => setMonth((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))}><ChevronLeft size={18} /></button><h2>{monthTitle}</h2><button type="button" className="journal-calendar-nav" aria-label="Next month" onClick={() => setMonth((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))}><ChevronRight size={18} /></button></div><div className="journal-calendar-grid">{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => <span className="journal-calendar-weekday" key={day}>{day}</span>)}{cells.map((day, i) => { const items = day ? filtered.filter((j) => { const d = getDate(j); return d.getFullYear() === month.getFullYear() && d.getMonth() === month.getMonth() && d.getDate() === day; }) : []; return <div className={`journal-calendar-cell ${day ? "" : "empty"} ${items.length ? "has-entries" : ""}`} key={`${monthTitle}-${i}`}>{day && <><span className="journal-calendar-day">{day}</span>{items.slice(0, 2).map((j) => <button className="journal-calendar-entry" type="button" key={j._id} onClick={() => open(j)} title={j.title}>{j.title || "Untitled"}</button>)}{items.length > 2 && <small>+{items.length - 2} more</small>}</>}</div>; })}</div><p className="journal-calendar-help">Select an entry title to open it.</p></div>
+      : view === "timeline" ? <div className="journal-timeline">{grouped.map((g) => <section className="journal-timeline-day" key={g.date.toISOString()}><div className="journal-timeline-date"><span>{g.date.toLocaleDateString(undefined, { day: "2-digit" })}</span><div><strong>{g.date.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</strong><small>{g.date.toLocaleDateString(undefined, { weekday: "long" })}</small></div></div><div className="journal-timeline-entries">{g.items.map((j) => card(j, true))}</div></section>)}</div>
+      : <div className="journal-library-list">{filtered.map((j) => card(j))}</div>}
+  </section>;
 }
