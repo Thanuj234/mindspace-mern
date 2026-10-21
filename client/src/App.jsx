@@ -1,122 +1,129 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { Link, Routes, Route, Navigate, useLocation } from "react-router-dom";
 
-function App() {
-  const [count, setCount] = useState(0)
+import Home from "./pages/Home";
+import Dashboard from "./pages/Dashboard";
+import Journal from "./pages/Journal";
+import JournalEditor from "./pages/JournalEditor";
+import BlogEditor from "./pages/BlogEditor";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Explore from "./pages/Explore";
+import BlogDetails from "./pages/BlogDetails";
+import BlogFeed from "./pages/BlogFeed";
+import WorkspaceLayout from "./components/WorkspaceLayout";
+import Collaborations from "./pages/Collaborations";
+import Profile from "./pages/Profile";
+
+function Placeholder({ title }) {
+  return (
+    <main className="page">
+      <p className="eyebrow">YOUR MINDSPACE</p>
+      <h1>{title}</h1>
+      <p>This page is being built. Your space is taking shape.</p>
+      <Link className="secondary" to="/">
+        ← Back to home
+      </Link>
+    </main>
+  );
+}
+
+function Navbar() {
+  const location = useLocation();
+  const isAuthenticated = Boolean(localStorage.getItem("token"));
+  const isExplorePage = location.pathname === "/blogs";
+
+  return (
+    <nav className="navbar">
+      <Link className="brand" to="/" aria-label="MindSpace home">
+        <span className="brand-mark" aria-hidden="true">●</span>
+        MindSpace
+      </Link>
+
+      <div className="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/#about">About</a>
+        <a href="/#privacy">Privacy</a>
+      </div>
+
+      {isAuthenticated ? (
+        <div className="nav-auth-links">
+          {!isExplorePage && <Link to="/blogs">Explore Stories</Link>}
+          <Link className="nav-cta" to="/dashboard">
+            Go to dashboard
+          </Link>
+        </div>
+      ) : (
+        <div className="nav-auth-links">
+          <Link to="/login">Log in</Link>
+          <Link className="nav-cta" to="/register">
+            Sign up
+          </Link>
+        </div>
+      )}
+    </nav>
+  );
+}
+
+export default function App() {
+  const location = useLocation();
+  const isLoggedIn = Boolean(localStorage.getItem("token"));
+
+  const isPublicPage =
+    location.pathname === "/" ||
+    location.pathname === "/blogs" ||
+    location.pathname.startsWith("/blogs/");
+
+  const isAuthPage =
+    location.pathname === "/login" ||
+    location.pathname === "/register";
 
   return (
     <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+      {isPublicPage && <Navbar />}
 
-      <div className="ticks"></div>
+      {isAuthPage ? (
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+        </Routes>
+      ) : isPublicPage ? (
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/blogs" element={<Explore />} />
+          <Route path="/blogs/:id" element={<BlogDetails />} />
+        </Routes>
+      ) : isLoggedIn ? (
+        <Routes>
+          {/* Keep the story editor outside WorkspaceLayout so it has no sidebar or toolbar. */}
+          <Route path="/write" element={<BlogEditor />} />
+          <Route path="/write/:id" element={<BlogEditor />} />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+          <Route element={<WorkspaceLayout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/journal" element={<Journal />} />
+            <Route path="/journal/new" element={<JournalEditor />} />
+            <Route path="/journal/:id/edit" element={<JournalEditor />} />
+            <Route path="/my-stories" element={<BlogFeed />} />
+            <Route path="/collaborations" element={<Collaborations />} />
+            <Route path="/ai" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route
+              path="/notifications"
+              element={<Placeholder title="Notifications" />}
+            />
+            <Route
+              path="/settings"
+              element={<Placeholder title="Settings" />}
+            />
+          </Route>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      ) : (
+        <Routes>
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      )}
     </>
-  )
+  );
 }
-
-export default App

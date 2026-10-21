@@ -7,27 +7,28 @@ async function authMiddleware(req, res, next) {
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
-        message: "Authentication token required"
+        message: "Authentication token required",
       });
     }
 
     const token = authHeader.split(" ")[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
     const user = await User.findById(decoded.id).select(
-      "name email interests"
+      "name email interests bio location profilePhoto isProfilePublic privateGoals yearlyReflection createdAt updatedAt"
     );
 
     if (!user) {
       return res.status(401).json({
-        message: "User no longer exists"
+        message: "User no longer exists",
       });
     }
 
     req.user = user;
-    next();
+    return next();
   } catch (error) {
     return res.status(401).json({
-      message: "Invalid or expired token"
+      message: "Invalid or expired token",
     });
   }
 }
