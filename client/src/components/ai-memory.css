@@ -1,0 +1,145 @@
+.ask-memory-widget {
+  position: fixed;
+  right: 26px;
+  bottom: 24px;
+  z-index: 1200;
+  font-family: inherit;
+}
+
+.ask-memory-launcher {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 54px;
+  padding: 0 19px;
+  border: 1px solid #5d4c79;
+  border-radius: 999px;
+  background: #514366;
+  color: #fffdf9;
+  box-shadow: 0 12px 32px rgb(53 42 70 / 24%);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 650;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.ask-memory-launcher:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 36px rgb(53 42 70 / 28%);
+}
+
+.ask-memory-launcher.is-open {
+  width: 48px;
+  min-height: 48px;
+  padding: 0;
+  margin-left: auto;
+}
+
+.ask-memory-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(390px, calc(100vw - 28px));
+  height: min(600px, calc(100dvh - 112px));
+  margin-bottom: 13px;
+  overflow: hidden;
+  border: 1px solid #e5ddec;
+  border-radius: 22px;
+  background: #fffdf9;
+  box-shadow: 0 20px 70px rgb(49 39 61 / 22%);
+  animation: ask-memory-appear 180ms ease-out;
+}
+
+@keyframes ask-memory-appear {
+  from { opacity: 0; transform: translateY(8px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.ask-memory-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 14px;
+  background: #f0eaf8;
+  border-bottom: 1px solid #e5ddec;
+}
+
+.ask-memory-brand-icon,
+.ask-memory-welcome-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: #dfd3f0;
+  color: #65517f;
+}
+
+.ask-memory-header-copy { display: grid; gap: 3px; flex: 1; min-width: 0; }
+.ask-memory-header-copy strong { color: #332d3d; font-size: 15px; }
+.ask-memory-header-copy span { color: #756c80; font-size: 12px; }
+
+.ask-memory-icon-button {
+  display: grid;
+  place-items: center;
+  width: 33px;
+  height: 33px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #685779;
+  cursor: pointer;
+}
+.ask-memory-icon-button:hover { background: rgb(255 255 255 / 70%); }
+
+.ask-memory-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 17px 14px;
+  overscroll-behavior: contain;
+}
+
+.ask-memory-welcome { padding: 9px 1px 5px; }
+.ask-memory-welcome h3 { margin: 14px 0 7px; color: #37313c; font-family: Georgia, "Times New Roman", serif; font-size: 22px; font-weight: 500; line-height: 1.2; }
+.ask-memory-welcome > p { margin: 0 0 17px; color: #77717a; font-size: 13px; line-height: 1.65; }
+.ask-memory-suggestions { display: grid; gap: 8px; }
+.ask-memory-suggestions button { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 11px 12px; border: 1px solid #e7e0ed; border-radius: 13px; background: #fff; color: #5e526d; text-align: left; font: inherit; font-size: 12px; line-height: 1.4; cursor: pointer; }
+.ask-memory-suggestions button:hover { border-color: #bba9d5; background: #faf7ff; }
+
+.ask-memory-message { display: flex; gap: 7px; margin: 0 0 16px; }
+.ask-memory-message.user { justify-content: flex-end; }
+.ask-memory-message-body { max-width: 91%; min-width: 0; }
+.ask-memory-message.user .ask-memory-message-body { padding: 11px 13px; border-radius: 15px 15px 4px 15px; background: #e7def5; color: #3e344e; }
+.ask-memory-message.assistant .ask-memory-message-body { flex: 1; color: #403b43; }
+.ask-memory-message-body > p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; line-height: 1.65; }
+.ask-memory-message-mark { display: grid; flex: 0 0 25px; width: 25px; height: 25px; place-items: center; border-radius: 9px; background: #e9e1f4; color: #705c8d; }
+.ask-memory-sources { display: grid; gap: 8px; margin-top: 13px; }
+.ask-memory-sources-title { color: #82768e; font-size: 10px; font-weight: 750; letter-spacing: .09em; }
+.ask-memory-source { display: flex; align-items: center; gap: 9px; padding: 10px; border: 1px solid #e9e2ec; border-radius: 12px; background: #fff; color: inherit; text-decoration: none; }
+.ask-memory-source:hover { border-color: #bba9d5; background: #fcfaff; }
+.ask-memory-source-icon { display: grid; flex: 0 0 32px; width: 32px; height: 32px; place-items: center; border-radius: 10px; background: #e2efe8; color: #4f7965; }
+.ask-memory-source-icon.story { background: #ece3f7; color: #765d9b; }
+.ask-memory-source-copy { display: grid; flex: 1; min-width: 0; gap: 4px; }
+.ask-memory-source-copy strong { overflow: hidden; color: #423b48; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.ask-memory-source-copy small { color: #827b86; font-size: 10px; }
+.ask-memory-source-arrow { color: #81718f; }
+
+.ask-memory-thinking { display: flex; align-items: center; gap: 8px; padding: 8px 0; color: #7a6b89; font-size: 12px; }
+.ask-memory-spinner { animation: ask-memory-spin 1s linear infinite; }
+@keyframes ask-memory-spin { to { transform: rotate(360deg); } }
+.ask-memory-error { margin: 0; padding: 8px 14px; background: #fff0ed; color: #9b4236; font-size: 12px; line-height: 1.45; }
+
+.ask-memory-composer { display: flex; align-items: end; gap: 9px; padding: 12px; border-top: 1px solid #eee7f0; background: #fff; }
+.ask-memory-composer textarea { flex: 1; min-width: 0; max-height: 100px; resize: vertical; padding: 10px 11px; border: 1px solid #e5ddec; border-radius: 13px; outline: none; background: #fdfbff; color: #3f3945; font: inherit; font-size: 12px; line-height: 1.5; }
+.ask-memory-composer textarea:focus { border-color: #b6a3d3; box-shadow: 0 0 0 3px rgb(182 163 211 / 18%); }
+.ask-memory-composer button { display: grid; flex: 0 0 39px; width: 39px; height: 39px; place-items: center; border: 0; border-radius: 12px; background: #514366; color: white; cursor: pointer; }
+.ask-memory-composer button:disabled { opacity: .45; cursor: not-allowed; }
+.ask-memory-privacy { margin: 0; padding: 0 12px 11px; background: #fff; color: #8b838e; font-size: 10px; text-align: center; }
+
+@media (max-width: 520px) {
+  .ask-memory-widget { right: 12px; bottom: 12px; }
+  .ask-memory-panel { width: calc(100vw - 24px); height: min(570px, calc(100dvh - 82px)); margin-bottom: 10px; border-radius: 19px; }
+  .ask-memory-launcher { min-height: 50px; padding: 0 15px; }
+}
