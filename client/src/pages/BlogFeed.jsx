@@ -7,6 +7,11 @@ import {
   Eye,
   Pencil,
   Trash2,
+  Heart,
+  MessageCircle,
+  Bookmark,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import api from "../services/api";
 
@@ -16,6 +21,7 @@ export default function BlogFeed() {
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [openComments, setOpenComments] = useState({});
 
   useEffect(() => {
     let cancelled = false;
@@ -137,9 +143,37 @@ export default function BlogFeed() {
                 </p>
 
                 <p className="my-story-excerpt">
-                  {(story.content || "").slice(0, 180)}
-                  {(story.content || "").length > 180 ? "…" : ""}
+                  {(story.content || "").replace(/<[^>]*>/g, " ").slice(0, 180)}
+                  {(story.content || "").replace(/<[^>]*>/g, " ").length > 180 ? "…" : ""}
                 </p>
+
+                {story.status === "published" && (
+                  <div className="my-story-social-stats" aria-label="Story engagement">
+                    <span><Heart size={15} /> {Number(story.likesCount ?? story.likes?.length ?? 0)} likes</span>
+                    <button type="button" onClick={() => setOpenComments((current) => ({ ...current, [story._id]: !current[story._id] }))} aria-expanded={Boolean(openComments[story._id])}>
+                      <MessageCircle size={15} /> {Number(story.commentsCount ?? story.comments?.length ?? 0)} comments {openComments[story._id] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    </button>
+                    <span><Bookmark size={15} /> {Number(story.savesCount || 0)} saves</span>
+                  </div>
+                )}
+
+                {story.status === "published" && openComments[story._id] && (
+                  <section className="my-story-comments" aria-label={`Comments on ${story.title}`}>
+                    {(story.comments || []).length ? story.comments.map((comment) => {
+                      const commenter = comment.authorId && typeof comment.authorId === "object" ? comment.authorId : null;
+                      const commenterId = commenter?._id || comment.authorId;
+                      return (
+                        <article className="my-story-comment" key={comment._id}>
+                          <div className="my-story-comment-meta">
+                            {commenterId ? <Link to={`/members/${commenterId}`}>{commenter?.name || "MindSpace member"}</Link> : <span>MindSpace member</span>}
+                            <time>{comment.createdAt ? new Date(comment.createdAt).toLocaleString() : "Just now"}</time>
+                          </div>
+                          <p>{comment.text}</p>
+                        </article>
+                      );
+                    }) : <p className="my-story-no-comments">No comments on this story yet.</p>}
+                  </section>
+                )}
               </div>
 
               <div className="my-story-actions">
