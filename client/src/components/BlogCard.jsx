@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
-import { Clock3, Sprout, Heart, Palette, Compass, BookOpen, Image as ImageIcon } from "lucide-react";
+import { useState } from "react";
+import { Clock3, Sprout, Heart, Palette, Compass, BookOpen, UserPlus, UserCheck } from "lucide-react";
+import api from "../services/api";
 import "./explore-stories.css";
 
 const categoryStyles = {
@@ -39,18 +41,41 @@ function getExcerpt(story) {
   return text.length > 150 ? `${text.slice(0, 150).trim()}…` : text;
 }
 
-export default function BlogCard({ story }) {
+export default function BlogCard({ story, source = "explore", followingIds = [], currentUserId = "", onFollowChange }) {
+  const [followLoading, setFollowLoading] = useState(false);
+  const [followError, setFollowError] = useState("");
   const category = story.category || "General";
   const StoryIcon = categoryIcons[category] || BookOpen;
   const theme = categoryStyles[category] || "ms-story-art-default";
   const coverUrl = story.coverImage?.url;
+  const authorId = story.authorId && typeof story.authorId === "object" ? String(story.authorId._id || "") : "";
+  const isFollowing = authorId && followingIds.includes(authorId);
+  const canFollow = Boolean(localStorage.getItem("token") && authorId && authorId !== currentUserId);
+
+  async function toggleFollow(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!canFollow || followLoading) return;
+    setFollowLoading(true);
+    setFollowError("");
+    try {
+      if (isFollowing) await api.delete(`/users/${authorId}/follow`);
+      else await api.post(`/users/${authorId}/follow`);
+      onFollowChange?.(authorId, !isFollowing);
+    } catch (error) {
+      setFollowError(error.response?.data?.message || "Couldn't update follow status.");
+    } finally {
+      setFollowLoading(false);
+    }
+  }
 
   return (
-    <Link
-      to={`/blogs/${story._id}`}
-      className="ms-story-card-link"
-      aria-label={`Read story: ${story.title || "Untitled story"}`}
-    >
+    <div className="ms-story-card-shell">
+      <Link
+        to={`/blogs/${story._id}?from=${source}`} state={{ from: source }}
+        className="ms-story-card-link"
+        aria-label={`Read story: ${story.title || "Untitled story"}`}
+      >
       <article className="ms-story-card">
         <div className={`ms-story-cover ${coverUrl ? "has-image" : theme}`}>
           {coverUrl ? (
@@ -91,6 +116,16 @@ export default function BlogCard({ story }) {
           </div>
         </div>
       </article>
-    </Link>
+      </Link>
+      {canFollow && (
+        <div className="ms-story-follow-row">
+          <button type="button" className={isFollowing ? "ms-follow-button following" : "ms-follow-button"} onClick={toggleFollow} disabled={followLoading}>
+            {isFollowing ? <UserCheck size={15} /> : <UserPlus size={15} />}
+            {followLoading ? "Updating…" : isFollowing ? "Following" : "Follow author"}
+          </button>
+          {followError && <span className="ms-follow-error" role="status">{followError}</span>}
+        </div>
+      )}
+    </div>
   );
 }

@@ -4,11 +4,16 @@ const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
 const {
   getPublishedBlogs,
+  getFollowingBlogs,
   getPublishedBlogById,
   createBlog,
   updateBlog,
   deleteBlog,
   getMyBlogs,
+  getStorySocialStatus,
+  toggleStoryLike,
+  addStoryComment,
+  deleteStoryComment,
 } = require("../controllers/blogController");
 const { uploadBlogMedia } = require("../controllers/blogMediaController");
 
@@ -25,6 +30,13 @@ const upload = multer({
 
 // Public endpoints
 router.get("/feed", getPublishedBlogs);
+// Following feed is private and must authenticate before reading the user graph.
+router.get("/following-feed", authMiddleware, getFollowingBlogs);
+// Authenticated story interactions. These routes are declared before the generic feed/:id route.
+router.get("/:id/social", authMiddleware, getStorySocialStatus);
+router.post("/:id/like", authMiddleware, toggleStoryLike);
+router.post("/:id/comments", authMiddleware, addStoryComment);
+router.delete("/:id/comments/:commentId", authMiddleware, deleteStoryComment);
 router.get("/feed/:id", getPublishedBlogById);
 
 // Private endpoints

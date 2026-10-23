@@ -9,6 +9,7 @@ const supabase = require("./config/supabase");
 const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const aiRoutes = require("./routes/aiRoutes");
+const userRoutes = require("./routes/userRoutes");
 const app = express();
 app.get("/api/storage-test", async (req, res) => {
   try {
@@ -59,6 +60,7 @@ app.use("/api/journals", journalRoutes);
 app.use("/api/blogs", blogRoutes);
 app.use("/api/collaborations", collaborationRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/users", userRoutes);
 // Member 3's routes will be mounted here after integration.
 const PORT = process.env.PORT || 5000;
 

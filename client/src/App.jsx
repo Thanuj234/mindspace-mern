@@ -13,6 +13,7 @@ import BlogFeed from "./pages/BlogFeed";
 import WorkspaceLayout from "./components/WorkspaceLayout";
 import Collaborations from "./pages/Collaborations";
 import Profile from "./pages/Profile";
+import PublicProfile from "./pages/PublicProfile";
 
 function Placeholder({ title }) {
   return (
@@ -39,25 +40,22 @@ function Navbar() {
         MindSpace
       </Link>
 
-      <div className="nav-links">
-        <a href="/#features">Features</a>
-        <a href="/#about">About</a>
-        <a href="/#privacy">Privacy</a>
-      </div>
+      {!(!isAuthenticated && isExplorePage) && (
+        <div className="nav-links">
+          <a href="/#features">Features</a>
+          <a href="/#about">About</a>
+          <a href="/#privacy">Privacy</a>
+        </div>
+      )}
 
-      {isAuthenticated ? (
+      {!isAuthenticated ? (
         <div className="nav-auth-links">
-          {!isExplorePage && <Link to="/blogs">Explore Stories</Link>}
-          <Link className="nav-cta" to="/dashboard">
-            Go to dashboard
-          </Link>
+          <Link to="/login">Log in</Link>
+          <Link className="nav-cta" to="/register">Sign up</Link>
         </div>
       ) : (
         <div className="nav-auth-links">
-          <Link to="/login">Log in</Link>
-          <Link className="nav-cta" to="/register">
-            Sign up
-          </Link>
+          <Link className="nav-cta" to="/dashboard">Go to dashboard</Link>
         </div>
       )}
     </nav>
@@ -71,15 +69,24 @@ export default function App() {
   const isPublicPage =
     location.pathname === "/" ||
     location.pathname === "/blogs" ||
-    location.pathname.startsWith("/blogs/");
+    location.pathname === "/saved" ||
+    location.pathname.startsWith("/blogs/") ||
+    location.pathname.startsWith("/members/");
 
   const isAuthPage =
     location.pathname === "/login" ||
     location.pathname === "/register";
 
+  const isStoryReadingPage = /^\/blogs\/[^/]+$/.test(location.pathname);
+  const showNavbar = isPublicPage && (
+    location.pathname === "/" ||
+    location.pathname.startsWith("/members/") ||
+    (location.pathname === "/blogs" && !isLoggedIn)
+  ) && !isStoryReadingPage;
+
   return (
     <>
-      {isPublicPage && <Navbar />}
+      {showNavbar && <Navbar />}
 
       {isAuthPage ? (
         <Routes>
@@ -91,6 +98,8 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/blogs" element={<Explore />} />
           <Route path="/blogs/:id" element={<BlogDetails />} />
+          <Route path="/saved" element={<Explore />} />
+          <Route path="/members/:id" element={<PublicProfile />} />
         </Routes>
       ) : isLoggedIn ? (
         <Routes>

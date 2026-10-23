@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   Clock3,
@@ -10,6 +10,9 @@ import {
   HeartHandshake,
   MapPin,
   Sparkles,
+  Heart,
+  Bookmark,
+  Trash2,
 } from "lucide-react";
 import api from "../services/api";
 import "../components/explore-stories.css";
@@ -48,6 +51,10 @@ function getAuthor(story) {
 
 export default function BlogDetails() {
   const { id } = useParams();
+  const location = useLocation();
+  const sourcePage = location.state?.from || new URLSearchParams(location.search).get("from");
+  const returnTo = sourcePage === "saved" ? "/saved" : "/blogs";
+  const returnLabel = sourcePage === "saved" ? "Back to Saved Stories" : "Back to Explore Stories";
 
   const [story, setStory] = useState(null);
   const [relatedStories, setRelatedStories] = useState([]);
@@ -58,6 +65,13 @@ export default function BlogDetails() {
   const [sending, setSending] = useState(false);
   const [requestError, setRequestError] = useState("");
   const [requestSuccess, setRequestSuccess] = useState("");
+  const [socialStatus, setSocialStatus] = useState({ liked: false, bookmarked: false, likesCount: 0, commentsCount: 0 });
+  const [socialBusy, setSocialBusy] = useState(false);
+  const [socialError, setSocialError] = useState("");
+  const [commentText, setCommentText] = useState("");
+  const [commentBusy, setCommentBusy] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState("");
+  const isAuthenticated = Boolean(localStorage.getItem("token"));
 
   useEffect(() => {
     const controller = new AbortController();
@@ -74,6 +88,7 @@ export default function BlogDetails() {
 
         const result = response.data?.story || response.data;
         setStory(result);
+        setSocialStatus((current) => ({ ...current, likesCount: Number(result.likesCount || 0), commentsCount: Array.isArray(result.comments) ? result.comments.length : 0 }));
       } catch (err) {
         if (
           err.name === "CanceledError" ||
@@ -99,6 +114,28 @@ export default function BlogDetails() {
 
     return () => controller.abort();
   }, [id]);
+
+  useEffect(() => {
+    let active = true;
+    if (!isAuthenticated) { setCurrentUserId(""); return () => { active = false; }; }
+    api.get("/auth/profile").then(({ data }) => {
+      const user = data?.user || data;
+      if (active) setCurrentUserId(String(user?.id || user?._id || ""));
+    }).catch(() => { if (active) setCurrentUserId(""); });
+    return () => { active = false; };
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    let active = true;
+    if (!id || !isAuthenticated) {
+      setSocialStatus({ liked: false, bookmarked: false, likesCount: 0, commentsCount: 0 });
+      return () => { active = false; };
+    }
+    api.get(`/blogs/${id}/social`).then(({ data }) => {
+      if (active) setSocialStatus({ liked: Boolean(data.liked), bookmarked: Boolean(data.bookmarked), likesCount: Number(data.likesCount || 0), commentsCount: Number(data.commentsCount || 0) });
+    }).catch(() => { /* Public story reading remains available if interaction status fails. */ });
+    return () => { active = false; };
+  }, [id, isAuthenticated]);
 
   useEffect(() => {
     let active = true;
@@ -132,6 +169,58 @@ export default function BlogDetails() {
     .slice(0, 2)
     .map((part) => part[0].toUpperCase())
     .join("") || "M";
+
+  async function toggleLike() {
+    if (!isAuthenticated) { setSocialError("Please log in to like stories."); return; }
+    if (socialBusy) return;
+    setSocialBusy(true); setSocialError("");
+    try {
+      const { data } = await api.post(`/blogs/${id}/like`);
+      setSocialStatus((current) => ({ ...current, liked: Boolean(data.liked), likesCount: Number(data.likesCount || 0) }));
+    } catch (err) {
+      setSocialError(err.response?.data?.message || "Couldn't update your like. Please try again.");
+    } finally { setSocialBusy(false); }
+  }
+
+  async function toggleBookmark() {
+    if (!isAuthenticated) { setSocialError("Please log in to save stories."); return; }
+    if (socialBusy) return;
+    setSocialBusy(true); setSocialError("");
+    try {
+      if (socialStatus.bookmarked) await api.delete(`/users/bookmarks/${id}`);
+      else await api.post(`/users/bookmarks/${id}`);
+      setSocialStatus((current) => ({ ...current, bookmarked: !current.bookmarked }));
+    } catch (err) {
+      setSocialError(err.response?.data?.message || "Couldn't update your saved stories.");
+    } finally { setSocialBusy(false); }
+  }
+
+  async function submitComment(event) {
+    event.preventDefault();
+    if (!isAuthenticated) { setSocialError("Please log in to comment."); return; }
+    const text = commentText.trim();
+    if (!text) return;
+    setCommentBusy(true); setSocialError("");
+    try {
+      const { data } = await api.post(`/blogs/${id}/comments`, { text });
+      setStory((current) => ({ ...current, comments: [...(current.comments || []), data.comment] }));
+      setSocialStatus((current) => ({ ...current, commentsCount: Number(data.commentsCount || current.commentsCount + 1) }));
+      setCommentText("");
+    } catch (err) {
+      setSocialError(err.response?.data?.message || "Couldn't post your comment. Please try again.");
+    } finally { setCommentBusy(false); }
+  }
+
+  async function deleteComment(commentId) {
+    setSocialError("");
+    try {
+      const { data } = await api.delete(`/blogs/${id}/comments/${commentId}`);
+      setStory((current) => ({ ...current, comments: (current.comments || []).filter((comment) => String(comment._id) !== String(commentId)) }));
+      setSocialStatus((current) => ({ ...current, commentsCount: Number(data.commentsCount || 0) }));
+    } catch (err) {
+      setSocialError(err.response?.data?.message || "Couldn't delete this comment.");
+    }
+  }
 
   async function sendCollaborationRequest(event) {
     event.preventDefault();
@@ -172,9 +261,9 @@ export default function BlogDetails() {
 
   return (
     <main className="page blog-details-page ms-story-detail-page">
-      <Link to="/blogs" className="ms-story-back-link">
+      <Link to={returnTo} className="ms-story-back-link">
         <ArrowLeft size={17} />
-        Back to Explore Stories
+        {returnLabel}
       </Link>
 
       {loading ? (
@@ -187,8 +276,8 @@ export default function BlogDetails() {
           <BookOpen size={30} />
           <h2>Story unavailable</h2>
           <p>{error}</p>
-          <Link to="/blogs" className="ms-story-action">
-            Return to Explore
+          <Link to={returnTo} className="ms-story-action">
+            {returnLabel}
           </Link>
         </section>
       ) : story ? (
@@ -284,6 +373,47 @@ export default function BlogDetails() {
               className="ms-story-reading-content"
               dangerouslySetInnerHTML={{ __html: story.content || "" }}
             />
+
+            <section className="ms-social-panel" aria-label="Story interactions">
+              <div className="ms-social-actions">
+                <button type="button" className={socialStatus.liked ? "ms-social-button active liked" : "ms-social-button"} onClick={toggleLike} disabled={socialBusy} aria-pressed={socialStatus.liked}>
+                  <Heart size={18} fill={socialStatus.liked ? "currentColor" : "none"} />
+                  {socialStatus.liked ? "Liked" : "Like"} · {socialStatus.likesCount}
+                </button>
+                <button type="button" className={socialStatus.bookmarked ? "ms-social-button active" : "ms-social-button"} onClick={toggleBookmark} disabled={socialBusy} aria-pressed={socialStatus.bookmarked}>
+                  <Bookmark size={18} fill={socialStatus.bookmarked ? "currentColor" : "none"} />
+                  {socialStatus.bookmarked ? "Saved" : "Bookmark"}
+                </button>
+                <a className="ms-social-button" href="#story-comments">💬 Comments · {(story.comments || []).length}</a>
+                <Link className="ms-social-button" to="/saved">View saved stories</Link>
+              </div>
+              {socialError && <p className="ms-social-error" role="alert">{socialError}</p>}
+
+              <section className="ms-comments-section" id="story-comments" aria-label="Story comments">
+                <h2>Comments <span>{(story.comments || []).length}</span></h2>
+                {isAuthenticated ? (
+                  <form className="ms-comment-form" onSubmit={submitComment}>
+                    <label className="sr-only" htmlFor="story-comment-input">Write a comment</label>
+                    <textarea id="story-comment-input" value={commentText} onChange={(event) => setCommentText(event.target.value)} maxLength={1000} rows={3} placeholder="Share a thoughtful response…" />
+                    <div className="ms-comment-form-footer"><span>{commentText.length}/1000</span><button type="submit" className="ms-story-action" disabled={commentBusy || !commentText.trim()}>{commentBusy ? "Posting…" : "Post comment"}</button></div>
+                  </form>
+                ) : <p className="ms-comments-login">Please <Link to="/login">log in</Link> to like, comment, or save stories.</p>}
+                {(story.comments || []).length ? (
+                  <div className="ms-comment-list">
+                    {[...(story.comments || [])].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)).map((comment) => {
+                      const commentAuthorId = String(comment.authorId?._id || comment.authorId || "");
+                      const canDelete = currentUserId && currentUserId === commentAuthorId;
+                      return <article className="ms-comment-item" key={comment._id}>
+                        <div className="ms-comment-heading">{commentAuthorId ? <Link className="ms-comment-profile-link" to={`/members/${commentAuthorId}`}>{comment.authorId?.name || "MindSpace member"}</Link> : <strong>{comment.authorId?.name || "MindSpace member"}</strong>}<time dateTime={comment.createdAt}>{comment.createdAt ? new Date(comment.createdAt).toLocaleString() : "Just now"}</time>
+                          {canDelete && <button type="button" aria-label="Delete your comment" onClick={() => deleteComment(comment._id)}><Trash2 size={15} /></button>}
+                        </div>
+                        <p>{comment.text}</p>
+                      </article>;
+                    })}
+                  </div>
+                ) : <p className="ms-comments-empty">No comments yet. Be the first to share a thought.</p>}
+              </section>
+            </section>
 
             {/* Collaboration feedback */}
             {requestError && (
@@ -403,7 +533,7 @@ export default function BlogDetails() {
                 </div>
                 <div className="ms-related-grid">
                   {relatedStories.map((item) => (
-                    <Link className="ms-related-card" to={`/blogs/${item._id}`} key={item._id}>
+                    <Link className="ms-related-card" to={`/blogs/${item._id}?from=${sourcePage === "saved" ? "saved" : "explore"}`} state={{ from: sourcePage === "saved" ? "saved" : "explore" }} key={item._id}>
                       {item.coverImage?.url ? (
                         <img src={item.coverImage.url} alt="" loading="lazy" />
                       ) : (

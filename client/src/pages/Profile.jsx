@@ -51,6 +51,8 @@ export default function Profile() {
   const [goalsText, setGoalsText] = useState("");
   const [journals, setJournals] = useState([]);
   const [blogs, setBlogs] = useState([]);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -104,6 +106,22 @@ export default function Profile() {
       }
     }
     
+    async function loadCommunityStats() {
+      try {
+        const response = await api.get("/users/me/stats");
+        if (active) {
+          setFollowersCount(Number(response.data?.followersCount || 0));
+          setFollowingCount(Number(response.data?.followingCount || 0));
+        }
+      } catch {
+        // Keep the profile usable if the stats endpoint is unavailable.
+        if (active) {
+          setFollowersCount(0);
+          setFollowingCount(0);
+        }
+      }
+    }
+
     async function loadTimeline() {
       try {
         const response = await api.get("/journals");
@@ -122,6 +140,7 @@ export default function Profile() {
     }
 
     loadProfile();
+    loadCommunityStats();
     loadTimeline();
 
     return () => {
@@ -253,6 +272,16 @@ async function saveProfile(event) {
 
   const publishedBlogs = blogs.filter(
     (blog) => blog.status === "published"
+  );
+
+  const totalStoryLikes = publishedBlogs.reduce(
+    (total, blog) => total + Number(blog.likesCount ?? blog.likes?.length ?? 0), 0
+  );
+  const totalStoryComments = publishedBlogs.reduce(
+    (total, blog) => total + Number(blog.commentsCount ?? blog.comments?.length ?? 0), 0
+  );
+  const totalStorySaves = publishedBlogs.reduce(
+    (total, blog) => total + Number(blog.savesCount || 0), 0
   );
 
   const currentYear = new Date().getFullYear();
@@ -426,6 +455,10 @@ async function handlePhotoUpload() {
             )}
             <p className="profile-eyebrow">A LITTLE ABOUT ME</p>
             <h2>{visibleProfile.name}</h2>
+            <div className="profile-public-stats" aria-label="Profile statistics">
+              <div><strong>{followersCount}</strong><span>Followers</span></div>
+              <div><strong>{followingCount}</strong><span>Following</span></div>
+            </div>
             {visibleProfile.location && (
               <p className="profile-muted">⌖ {visibleProfile.location}</p>
             )}
@@ -640,6 +673,14 @@ async function handlePhotoUpload() {
                 <span className="profile-soft-icon">◷</span>
               </div>
 
+              <div className="profile-stats-grid" style={{ marginBottom: 24 }}>
+                <StatCard label="Followers" value={followersCount} note="People following your stories" />
+                <StatCard label="Following" value={followingCount} note="Authors you follow" />
+                <StatCard label="Story likes" value={totalStoryLikes} note="Likes on your published stories" />
+                <StatCard label="Comments" value={totalStoryComments} note="Comments on your published stories" />
+                <StatCard label="Saves" value={totalStorySaves} note="Times your stories were bookmarked" />
+              </div>
+
               <div className="profile-filters">
                 <label className="profile-field">
                   <span>From</span>
@@ -713,6 +754,16 @@ async function handlePhotoUpload() {
                             (item.content || "").replace(/<[^>]*>/g, "").slice(0, 180) ||
                             "A moment from your MindSpace."}
                         </p>
+                        {item.timelineType === "blog" && (
+                          <div
+                            aria-label="Story engagement statistics"
+                            style={{ display: "flex", flexWrap: "wrap", gap: 14, marginTop: 12, fontSize: 13, color: "var(--text-muted, #64748b)" }}
+                          >
+                            <span>♥ {Number(item.likesCount ?? item.likes?.length ?? 0)} likes</span>
+                            <span>💬 {Number(item.commentsCount ?? item.comments?.length ?? 0)} comments</span>
+                            <span>🔖 {Number(item.savesCount || 0)} saves</span>
+                          </div>
+                        )}
                         {item.mood && (
                           <span className="profile-muted">Mood: {item.mood}</span>
                         )}

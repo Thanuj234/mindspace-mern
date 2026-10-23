@@ -18,7 +18,13 @@ const blogSchema = new mongoose.Schema({
   tags: { type: [String], default: [] },
   coverImage: { type: mediaSchema, default: null },
   media: { type: [mediaSchema], default: [] },
-  status: { type: String, enum: ["draft", "published"], default: "draft" }
+  status: { type: String, enum: ["draft", "published"], default: "draft" },
+  likes: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], default: [] },
+  comments: [{
+    authorId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    text: { type: String, required: true, trim: true, maxlength: 1000 },
+    createdAt: { type: Date, default: Date.now }
+  }]
 }, { timestamps: true });
 
 module.exports = mongoose.model("Blog", blogSchema);
